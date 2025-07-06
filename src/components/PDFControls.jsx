@@ -6,7 +6,7 @@ import {
   ChevronLeft, 
   ChevronRight,
   RotateCw,
-  Fit,
+  Maximize2,
   Search
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -116,7 +116,7 @@ const PDFControls = ({
           onClick={fitToWidth}
           className="h-8 px-2"
         >
-          <Fit className="h-4 w-4" />
+          <Maximize2 className="h-4 w-4" />
         </Button>
       </div>
 
