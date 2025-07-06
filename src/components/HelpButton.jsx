@@ -12,13 +12,20 @@ import {
 const HelpButton = () => {
   const features = [
     "Upload and view PDF files",
-    "Navigate through pages",
+    "Navigate through pages with arrow controls",
+    "Zoom In/Out with precise scale control (50% - 300%)",
+    "Rotate pages 90° clockwise",
+    "Fit page to width for optimal viewing",
+    "Fullscreen mode for distraction-free reading",
+    "Search within PDF content",
     "Reorder pages via drag and drop",
-    "Delete pages",
-    "Merge PDFs",
+    "Delete pages with confirmation",
+    "Merge multiple PDFs seamlessly",
     "Save and download modified PDFs",
-    "Rename PDFs",
-    "Change existing PDF",
+    "Rename PDFs with inline editing",
+    "Keyboard shortcuts (Ctrl/Cmd + +/- for zoom, R for rotate, F for fullscreen)",
+    "Loading states and error handling",
+    "Responsive design for all devices"
   ];
 
   return (

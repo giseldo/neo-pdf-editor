@@ -3,13 +3,15 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import PDFSidebar from '../components/PDFSidebar';
+import PDFControls from '../components/PDFControls';
 import Navbar from '../components/Navbar';
 import { PDFDocument } from 'pdf-lib';
-import { FileIcon } from 'lucide-react';
+import { FileIcon, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import HelpButton from '../components/HelpButton';
+import { usePDFViewer } from '../hooks/usePDFViewer';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -80,7 +82,20 @@ const Index = () => {
   const [isSaveAsModalOpen, setIsSaveAsModalOpen] = useState(false);
   const [saveAsFileName, setSaveAsFileName] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const mainContentRef = useRef(null);
+  
+  const {
+    scale,
+    setScale,
+    rotation,
+    setRotation,
+    isFullscreen,
+    toggleFullscreen,
+    searchTerm,
+    setSearchTerm,
+    resetViewer
+  } = usePDFViewer();
 
   const toggleSidebar = () => {
     setIsSidebarVisible(!isSidebarVisible);
@@ -89,9 +104,11 @@ const Index = () => {
   const onFileChange = (event) => {
     const file = event.target.files[0];
     if (file && file.type === "application/pdf") {
+      setIsLoading(true);
       setPdfFile(URL.createObjectURL(file));
       setPdfName(file.name);
       setCurrentPage(1);
+      resetViewer(); // Reset zoom, rotation, search
     } else {
       alert("Please select a valid PDF file.");
     }
@@ -100,6 +117,7 @@ const Index = () => {
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
     setPageOrder(Array.from({ length: numPages }, (_, i) => i + 1));
+    setIsLoading(false);
   };
 
   const scrollToPage = (pageNumber) => {
@@ -305,28 +323,91 @@ const Index = () => {
               onDeletePage={onDeletePage}
             />
           )}
-          <div className="flex-1 p-4 overflow-hidden relative">
+          <div className="flex-1 flex flex-col overflow-hidden relative">
             {pdfFile ? (
-              <div className="border border-purple-200 rounded-lg overflow-hidden bg-white shadow-lg h-full">
-                <div ref={mainContentRef} className="overflow-y-auto h-full">
-                  <Document
-                    file={pdfFile}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    className="flex flex-col items-center"
+              <>
+                <PDFControls
+                  currentPage={currentPage}
+                  numPages={numPages}
+                  scale={scale}
+                  onScaleChange={setScale}
+                  onPageChange={scrollToPage}
+                  onToggleFullscreen={toggleFullscreen}
+                  isFullscreen={isFullscreen}
+                  onRotate={() => setRotation(prev => (prev + 90) % 360)}
+                  rotation={rotation}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                />
+                <div className="flex-1 bg-white overflow-hidden relative">
+                  {isLoading && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                      <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                      <span className="ml-2 text-gray-600">Loading PDF...</span>
+                    </div>
+                  )}
+                  <div 
+                    ref={mainContentRef} 
+                    className={`overflow-y-auto h-full ${isFullscreen ? 'p-8' : 'p-4'}`}
+                    style={{ 
+                      backgroundColor: isFullscreen ? '#1a1a1a' : '#f8f9fa',
+                    }}
                   >
-                    {pageOrder.map((pageNumber, index) => (
-                      <div id={`page_${pageNumber}`} key={`page_${pageNumber}`} className="mb-8">
-                        <Page
-                          pageNumber={pageNumber}
-                          width={Math.min(800, window.innerWidth * 0.6)}
-                          renderTextLayer={true}
-                          renderAnnotationLayer={true}
-                        />
-                      </div>
-                    ))}
-                  </Document>
+                    <Document
+                      file={pdfFile}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      onLoadError={() => setIsLoading(false)}
+                      loading={
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                          <span className="ml-2 text-gray-600">Loading PDF...</span>
+                        </div>
+                      }
+                      className="flex flex-col items-center"
+                    >
+                      {pageOrder.map((pageNumber, index) => (
+                        <div 
+                          id={`page_${pageNumber}`} 
+                          key={`page_${pageNumber}`} 
+                          className={`mb-8 transition-all duration-300 ease-in-out ${
+                            isFullscreen ? 'shadow-2xl' : 'shadow-lg'
+                          }`}
+                          style={{
+                            transform: `rotate(${rotation}deg)`,
+                            transformOrigin: 'center'
+                          }}
+                        >
+                          <Page
+                            pageNumber={pageNumber}
+                            scale={scale}
+                            rotate={rotation}
+                            renderTextLayer={true}
+                            renderAnnotationLayer={true}
+                            className="border border-gray-200 rounded-lg overflow-hidden bg-white"
+                            canvasBackground="transparent"
+                            loading={
+                              <div className="flex items-center justify-center h-96 bg-gray-50 border border-gray-200 rounded-lg">
+                                <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                                <span className="ml-2 text-gray-500">Loading page {index + 1}...</span>
+                              </div>
+                            }
+                            error={
+                              <div className="flex items-center justify-center h-96 bg-red-50 border border-red-200 rounded-lg">
+                                <span className="text-red-600">Failed to load page {index + 1}</span>
+                              </div>
+                            }
+                          />
+                          {searchTerm && (
+                            <div className="absolute top-2 right-2 bg-yellow-200 px-2 py-1 rounded text-xs font-medium text-yellow-800">
+                              Page {index + 1}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </Document>
+                  </div>
                 </div>
-              </div>
+              </>
             ) : (
               <DragDropArea onFileChange={onFileChange} />
             )}
